@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:security="http://www.springframework.org/schema/security"
+       xmlns:ws="http://jax-ws.dev.java.net/spring/core"
+       xmlns:wss="http://jax-ws.dev.java.net/spring/servlet"
+       xsi:schemaLocation="
+        http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-3.0.xsd
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd
+        http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security-3.1.xsd
+        http://jax-ws.dev.java.net/spring/core http://jax-ws.java.net/spring/core.xsd
+        http://jax-ws.dev.java.net/spring/servlet http://jax-ws.java.net/spring/servlet.xsd">
+
+    <context:component-scan base-package="com.rest" />
+    <mvc:annotation-driven />
+    
+    <bean id="authenticationEntryPoint" class="org.springframework.security.web.authentication.www.BasicAuthenticationEntryPoint">
+        <property name="realmName" value="Username: username Password: " />
+    </bean>
+    
+    <security:authentication-manager alias="authenticationManager">
+        <security:authentication-provider ref="customAuthenticationProvider" />
+    </security:authentication-manager>
+    
+    <security:global-method-security pre-post-annotations="enabled" >  
+    </security:global-method-security>
+    
+    <bean id="customAuthenticationProvider" class="com.security.CustomAuthenticationProvider" />
+
+    <!-- Our customer Basic Authentication Filter. This can be replaced with what 
+    ever authentication process you wish -->
+    <bean id="customRestFilter" class="com.security.CustomSecurityFilter">
+        <constructor-arg name="authenticationManager" ref="authenticationManager" />
+    </bean>
+    
+    <!-- Creates the springSecurityFilterChain with the customer filter customRestFilter injected.  -->
+    <security:http create-session="stateless" 
+    	entry-point-ref="authenticationEntryPoint"
+    	use-expressions="true"
+		authentication-manager-ref="authenticationManager">
+        <security:custom-filter ref="customRestFilter" position="BASIC_AUTH_FILTER" />
+        <security:intercept-url pattern="/rest/eCustomer/**" access="hasRole('ROLE_USER')" />
+		<security:intercept-url pattern="/rest/eIdentity/**" access="permitAll" />
+		<security:intercept-url pattern="/ws/eCustomer/**" access="hasRole('ROLE_USER')"/>
+    </security:http>
+    
+    <wss:binding url="/ws/eCustomer">
+        <wss:service>
+            <ws:service bean="#eCustomerWs" />
+        </wss:service>
+    </wss:binding>
+    
+    <bean id="eCustomerWs" class="com.ws.ECustomerWS"></bean>
+    
+     <bean id="soapAuthHandler"  class="com.security.SOAPHandler">
+    	<property name="authenticationManager" ref="authenticationManager"></property>
+    </bean>
+    
+</beans>
